@@ -1,13 +1,19 @@
 {
   "name": "flamekyro-assistant",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "FlameKyro Discord AI Assistant",
+  "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "discord",
+    "bot",
+    "groq",
+    "ai"
+  ],
+  "author": "Sachin Verma",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {

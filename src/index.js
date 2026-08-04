@@ -20,6 +20,7 @@ const client = new Client({
 
 client.commands = new Collection();
 
+// Load Commands
 const commandsPath = path.join(__dirname, "commands");
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
 
@@ -28,11 +29,22 @@ for (const file of commandFiles) {
     client.commands.set(command.data.name, command);
 }
 
+// Load Events
+const messageCreateEvent = require("./events/messageCreate");
+
+// Bot Ready
 client.once(Events.ClientReady, () => {
     console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
+// AI Chat Event
+client.on(messageCreateEvent.name, async (message) => {
+    await messageCreateEvent.execute(message);
+});
+
+// Slash Commands
 client.on(Events.InteractionCreate, async interaction => {
+
     if (!interaction.isChatInputCommand()) return;
 
     const command = client.commands.get(interaction.commandName);
@@ -40,22 +52,31 @@ client.on(Events.InteractionCreate, async interaction => {
     if (!command) return;
 
     try {
+
         await command.execute(interaction);
+
     } catch (error) {
+
         console.error(error);
 
         if (interaction.replied || interaction.deferred) {
+
             await interaction.followUp({
                 content: "❌ Something went wrong.",
                 ephemeral: true
             });
+
         } else {
+
             await interaction.reply({
                 content: "❌ Something went wrong.",
                 ephemeral: true
             });
+
         }
+
     }
+
 });
 
 client.login(process.env.DISCORD_TOKEN);

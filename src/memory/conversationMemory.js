@@ -1,28 +1,35 @@
 const conversations = new Map();
 
-function getConversation(userId) {
-  if (!conversations.has(userId)) {
-    conversations.set(userId, []);
-  }
+const MAX_MESSAGES = 12;
 
-  return conversations.get(userId);
+function getConversation(userId) {
+    if (!conversations.has(userId)) {
+        conversations.set(userId, []);
+    }
+
+    return conversations.get(userId);
 }
 
 function addMessage(userId, role, content) {
-  const conversation = getConversation(userId);
+    const conversation = getConversation(userId);
 
-  conversation.push({
-    role,
-    content,
-  });
+    conversation.push({
+        role,
+        content
+    });
 
-  // केवल आखिरी 20 messages रखो
-  if (conversation.length > 20) {
-    conversation.shift();
-  }
+    // Keep only the most recent messages
+    while (conversation.length > MAX_MESSAGES) {
+        conversation.shift();
+    }
+}
+
+function clearConversation(userId) {
+    conversations.delete(userId);
 }
 
 module.exports = {
-  getConversation,
-  addMessage,
+    getConversation,
+    addMessage,
+    clearConversation
 };

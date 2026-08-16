@@ -22,50 +22,181 @@ const client = new Client({
 
 client.commands = new Collection();
 
+
+// ===============================
+// LOAD COMMANDS
+// ===============================
+
 const commandsPath = path.join(__dirname, "commands");
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
+
+const commandFiles = fs
+    .readdirSync(commandsPath)
+    .filter(file => file.endsWith(".js"));
 
 for (const file of commandFiles) {
     const command = require(path.join(commandsPath, file));
-    client.commands.set(command.data.name, command);
+
+    if (command?.data?.name) {
+        client.commands.set(command.data.name, command);
+    }
 }
 
+
+// ===============================
+// LOAD MESSAGE EVENT
+// ===============================
+
+const messageCreateEvent = require("./events/messageCreate");
+
+console.log(
+    `🔌 MessageCreate handler loaded: ${messageCreateEvent.name}`
+);
+
+
+// ===============================
+// BOT READY
+// ===============================
+
 client.once(Events.ClientReady, async () => {
-    console.log(`✅ Logged in as ${client.user.tag}`);
 
-    const databaseReady = await initializeDatabase();
+    console.log(
+        `✅ Logged in as ${client.user.tag}`
+    );
 
-    if (databaseReady) {
-        console.log("🧠 Persistent memory system is ONLINE.");
-    } else {
-        console.log("⚠️ Persistent memory is currently unavailable.");
+    console.log(
+        `🏠 AI Channel configured: ${process.env.AI_CHANNEL_ID}`
+    );
+
+    console.log(
+        `👑 Owner ID configured: ${process.env.OWNER_USER_ID ? "YES" : "NO"}`
+    );
+
+    try {
+
+        await initializeDatabase();
+
+        console.log(
+            "🧠 Persistent memory system is ONLINE."
+        );
+
+    } catch (error) {
+
+        console.error(
+            "❌ Database initialization failed:",
+            error
+        );
+
+        console.warn(
+            "⚠️ Persistent memory is currently unavailable."
+        );
     }
 });
 
-client.on(Events.InteractionCreate, async interaction => {
-    if (!interaction.isChatInputCommand()) return;
 
-    const command = client.commands.get(interaction.commandName);
+// ===============================
+// MESSAGE CREATE DIAGNOSTIC
+// ===============================
 
-    if (!command) return;
+client.on(Events.MessageCreate, async (message) => {
+
+    console.log(
+        `📩 GLOBAL MESSAGE EVENT | User: ${message.author?.tag} | Channel: ${message.channel?.id} | Content: ${message.content}`
+    );
 
     try {
-        await command.execute(interaction);
-    } catch (error) {
-        console.error(error);
 
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({
-                content: "❌ Something went wrong.",
-                ephemeral: true
-            });
-        } else {
-            await interaction.reply({
-                content: "❌ Something went wrong.",
-                ephemeral: true
-            });
+        await messageCreateEvent.execute(message);
+
+    } catch (error) {
+
+        console.error(
+            "❌ MESSAGE EVENT EXECUTION ERROR:",
+            error
+        );
+    }
+});
+
+
+// ===============================
+// SLASH COMMANDS
+// ===============================
+
+client.on(Events.InteractionCreate, async interaction => {
+
+    if (!interaction.isChatInputCommand()) {
+        return;
+    }
+
+    const command = client.commands.get(
+        interaction.commandName
+    );
+
+    if (!command) {
+        return;
+    }
+
+    try {
+
+        await command.execute(interaction);
+
+    } catch (error) {
+
+        console.error(
+            "❌ Slash command error:",
+            error
+        );
+
+        try {
+
+            if (interaction.replied || interaction.deferred) {
+
+                await interaction.followUp({
+                    content: "❌ Something went wrong.",
+                    ephemeral: true
+                });
+
+            } else {
+
+                await interaction.reply({
+                    content: "❌ Something went wrong.",
+                    ephemeral: true
+                });
+            }
+
+        } catch (replyError) {
+
+            console.error(
+                "❌ Failed to send slash command error:",
+                replyError
+            );
         }
     }
 });
+
+
+// ===============================
+// DISCORD CLIENT ERRORS
+// ===============================
+
+client.on(Events.Error, error => {
+
+    console.error(
+        "❌ Discord client error:",
+        error
+    );
+});
+
+client.on(Events.Warn, warning => {
+
+    console.warn(
+        "⚠️ Discord warning:",
+        warning
+    );
+});
+
+
+// ===============================
+// LOGIN
+// ===============================
 
 client.login(process.env.DISCORD_TOKEN);

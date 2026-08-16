@@ -1,5 +1,11 @@
 const { Events } = require("discord.js");
+
 const { askAI } = require("../services/groq");
+
+const {
+    upsertUser,
+    ensureOwnerIdentity
+} = require("../services/memoryService");
 
 module.exports = {
     name: Events.MessageCreate,
@@ -17,6 +23,12 @@ module.exports = {
 
         try {
 
+            // Update Discord user profile
+            await upsertUser(message.author);
+
+            // Verify Flame's owner identity
+            await ensureOwnerIdentity(message.author);
+
             // Show typing indicator
             await message.channel.sendTyping();
 
@@ -31,13 +43,11 @@ module.exports = {
 
         } catch (error) {
 
-            console.error(error);
+            console.error("❌ Message handler error:", error);
 
             await message.reply(
                 "❌ Sorry bro, kuch technical issue aa gaya. Thodi der baad try karna."
             );
-
         }
-
     }
 };

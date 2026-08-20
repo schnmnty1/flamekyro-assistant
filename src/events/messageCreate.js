@@ -12,31 +12,33 @@ module.exports = {
 
     async execute(message) {
 
-        // Ignore bots
+        // ========================================
+        // IGNORE BOTS
+        // ========================================
+
         if (message.author.bot) {
-
-            console.log("⏭️ Ignoring bot message.");
-
+            console.log("Ignoring bot message.");
             return;
         }
 
+        // ========================================
+        // ONLY WORK INSIDE AI CHANNEL
+        // ========================================
 
-        // Only work inside AI Channel
         if (
             message.channel.id !==
             process.env.AI_CHANNEL_ID
         ) {
-
             return;
         }
 
+        // ========================================
+        // IGNORE EMPTY MESSAGES
+        // ========================================
 
-        // Ignore empty messages
         if (!message.content.trim()) {
-
             return;
         }
-
 
         try {
 
@@ -45,7 +47,7 @@ module.exports = {
             // ========================================
 
             console.log(
-                "👤 Updating user profile..."
+                "Updating user profile..."
             );
 
             await upsertUser(
@@ -53,16 +55,15 @@ module.exports = {
             );
 
             console.log(
-                "✅ User profile updated."
+                "User profile updated."
             );
-
 
             // ========================================
             // VERIFY OWNER IDENTITY
             // ========================================
 
             console.log(
-                "👑 Checking owner identity..."
+                "Checking owner identity..."
             );
 
             const isOwner =
@@ -71,20 +72,18 @@ module.exports = {
                 );
 
             console.log(
-                `🔐 Owner verification result: ${isOwner}`
+                `Owner verification result: ${isOwner}`
             );
-
 
             // ========================================
             // TYPING INDICATOR
             // ========================================
 
             console.log(
-                "⌨️ Sending typing indicator..."
+                "Sending typing indicator..."
             );
 
             await message.channel.sendTyping();
-
 
             // ========================================
             // ASK AI
@@ -93,7 +92,7 @@ module.exports = {
             // ========================================
 
             console.log(
-                "🤖 Sending message to AI..."
+                "Sending message to AI..."
             );
 
             const reply =
@@ -107,33 +106,76 @@ module.exports = {
                     }
                 );
 
+            // ========================================
+            // DISCORD OUTPUT NORMALIZER
+            //
+            // Converts our internal channel markers
+            // into native Discord clickable mentions.
+            //
+            // Example:
+            // [[DISCORD_CHANNEL:123456789]]
+            //
+            // becomes:
+            // <#123456789>
+            // ========================================
+
+            let finalReply =
+                typeof reply === "string"
+                    ? reply
+                    : String(reply ?? "");
+
+            finalReply =
+                finalReply.replace(
+                    /\[\[DISCORD_CHANNEL:(\d{17,20})\]\]/g,
+                    "<#$1>"
+                );
+
+            // ========================================
+            // SAFETY: REMOVE ACCIDENTAL MARKDOWN
+            // GENERATED AROUND OUR CHANNEL MARKERS
+            //
+            // This only targets the Discord asset-link
+            // pattern that we have observed in the AI
+            // response. It does NOT rewrite normal URLs.
+            // ========================================
+
+            finalReply =
+                finalReply.replace(
+                    /\[#\s*(?:<a?:[^>]+>|:[^:\s]+:)?\]\(https:\/\/discord\.com\/assets\/[^)]+\)/gi,
+                    "#"
+                );
 
             // ========================================
             // REPLY
             // ========================================
 
             console.log(
-                "✅ AI response received."
+                "AI response received."
             );
 
             console.log(
-                "💬 Sending Discord reply..."
+                "Discord reply after formatting:",
+                finalReply
             );
-
-            await message.reply(reply);
 
             console.log(
-                "✅ Discord reply sent successfully."
+                "Sending Discord reply..."
             );
 
+            await message.reply(
+                finalReply
+            );
+
+            console.log(
+                "Discord reply sent successfully."
+            );
 
         } catch (error) {
 
             console.error(
-                "❌ Message handler error:",
+                "Message handler error:",
                 error
             );
-
 
             try {
 
@@ -144,13 +186,11 @@ module.exports = {
             } catch (replyError) {
 
                 console.error(
-                    "❌ Failed to send error reply:",
+                    "Failed to send error reply:",
                     replyError
                 );
 
             }
-
         }
-
     }
 };

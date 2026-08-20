@@ -5,7 +5,7 @@ const SYSTEM_HEALTH_TOOL = "system_health";
 
 toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
     description:
-        "Run an owner-only FlameKyro system health audit. Checks Discord server, PostgreSQL, memory tables, moderation/OWO configuration, registered AI tools, and bot permissions. Never exposes secrets.",
+        "Run an owner-only FlameKyro system health audit. Checks Discord server, PostgreSQL, memory tables, moderation/OWO configuration, registered AI tools, and bot permissions. Never exposes secrets. When reporting configured Discord channels, preserve the provided Discord channel markers exactly and never convert them into URLs or Markdown links.",
 
     permissions: ["MANAGE_GUILD"],
 
@@ -37,7 +37,8 @@ toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
                 };
             }
         } catch (error) {
-            serverCheck.details = "Failed to read Discord guild information.";
+            serverCheck.details =
+                "Failed to read Discord guild information.";
         }
 
         checks.push(serverCheck);
@@ -49,7 +50,8 @@ toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
         let ownerCheck = {
             system: "Owner Identity",
             status: "FAIL",
-            details: "Owner verification could not be completed."
+            details:
+                "Owner verification could not be completed."
         };
 
         try {
@@ -73,7 +75,8 @@ toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
                     : "Owner identity verification failed."
             };
         } catch (error) {
-            ownerCheck.details = "Owner verification failed due to an internal error.";
+            ownerCheck.details =
+                "Owner verification failed due to an internal error.";
         }
 
         checks.push(ownerCheck);
@@ -91,7 +94,8 @@ toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
                 checks.push({
                     system: "PostgreSQL",
                     status: "FAIL",
-                    details: "DATABASE_URL is not configured."
+                    details:
+                        "DATABASE_URL is not configured."
                 });
             } else {
                 const dbStartedAt = Date.now();
@@ -100,7 +104,8 @@ toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
                     "SELECT NOW() AS server_time"
                 );
 
-                const latency = Date.now() - dbStartedAt;
+                const latency =
+                    Date.now() - dbStartedAt;
 
                 if (result?.rows?.length) {
                     databaseConnected = true;
@@ -116,7 +121,8 @@ toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
                     checks.push({
                         system: "PostgreSQL",
                         status: "FAIL",
-                        details: "Database query returned no result."
+                        details:
+                            "Database query returned no result."
                     });
                 }
             }
@@ -157,15 +163,18 @@ toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
                         result?.rows?.[0]?.exists === true;
 
                     checks.push({
-                        system: `Database Table: ${table}`,
-                        status: exists ? "PASS" : "FAIL",
+                        system:
+                            `Database Table: ${table}`,
+                        status:
+                            exists ? "PASS" : "FAIL",
                         details: exists
                             ? "Table exists in PostgreSQL."
                             : "Required table does not exist."
                     });
                 } catch (error) {
                     checks.push({
-                        system: `Database Table: ${table}`,
+                        system:
+                            `Database Table: ${table}`,
                         status: "FAIL",
                         details:
                             `Table check failed: ${error.message}`
@@ -231,7 +240,8 @@ toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
                 process.env[config.env] || null;
 
             let status = "FAIL";
-            let details = "Channel ID is not configured.";
+            let details =
+                "Channel ID is not configured.";
 
             if (channelId) {
                 const channel =
@@ -239,14 +249,33 @@ toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
 
                 if (channel) {
                     status = "PASS";
+
+                    const channelMention =
+                        `<#${channel.id}>`;
+
+                    const channelMarker =
+                        `[[DISCORD_CHANNEL:${channel.id}]]`;
+
                     details =
                         `Configured and accessible. ` +
-                        `Channel: #${channel.name}`;
-                } else {
-                    status = "FAIL";
-                    details =
-                        `Configured ID ${channelId} could not be resolved in this guild.`;
+                        `Channel: ${channelMarker}`;
+
+                    checks.push({
+                        system: config.name,
+                        status,
+                        details,
+                        channelId: channel.id,
+                        channelMention,
+                        channelMarker,
+                        channelName: channel.name
+                    });
+
+                    continue;
                 }
+
+                status = "FAIL";
+                details =
+                    `Configured ID ${channelId} could not be resolved in this guild.`;
             }
 
             checks.push({
@@ -269,9 +298,10 @@ toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
 
             checks.push({
                 system: "AI Tool Engine",
-                status: tools.length > 0
-                    ? "PASS"
-                    : "FAIL",
+                status:
+                    tools.length > 0
+                        ? "PASS"
+                        : "FAIL",
                 details:
                     `${tools.length} registered tool(s): ` +
                     `${toolNames.join(", ") || "none"}`
@@ -291,19 +321,24 @@ toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
 
         try {
             if (member) {
-                const permissions = member.permissions;
+                const permissions =
+                    member.permissions;
 
                 const administrator =
-                    permissions?.has("Administrator") || false;
+                    permissions?.has("Administrator") ||
+                    false;
 
                 const manageGuild =
-                    permissions?.has("ManageGuild") || false;
+                    permissions?.has("ManageGuild") ||
+                    false;
 
                 const manageMessages =
-                    permissions?.has("ManageMessages") || false;
+                    permissions?.has("ManageMessages") ||
+                    false;
 
                 checks.push({
-                    system: "Bot/User Permissions",
+                    system:
+                        "Bot/User Permissions",
                     status:
                         administrator ||
                         manageGuild ||
@@ -317,16 +352,20 @@ toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
                 });
             } else {
                 checks.push({
-                    system: "Bot/User Permissions",
-                    status: "NOT VERIFIED",
+                    system:
+                        "Bot/User Permissions",
+                    status:
+                        "NOT VERIFIED",
                     details:
                         "Discord member object was unavailable."
                 });
             }
         } catch (error) {
             checks.push({
-                system: "Bot/User Permissions",
-                status: "NOT VERIFIED",
+                system:
+                    "Bot/User Permissions",
+                status:
+                    "NOT VERIFIED",
                 details:
                     "Permission inspection failed."
             });
@@ -345,7 +384,8 @@ toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
 
         for (const [name, env] of environmentChecks) {
             checks.push({
-                system: `Configuration: ${name}`,
+                system:
+                    `Configuration: ${name}`,
                 status:
                     process.env[env]
                         ? "PASS"
@@ -363,31 +403,34 @@ toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
 
         const failed =
             checks.filter(
-                check => check.status === "FAIL"
+                check =>
+                    check.status === "FAIL"
             );
 
         const notVerified =
             checks.filter(
-                check => check.status === "NOT VERIFIED"
+                check =>
+                    check.status === "NOT VERIFIED"
             );
 
-        let overallStatus = "HEALTHY";
+        let overallStatus =
+            "HEALTHY";
 
         if (failed.length > 0) {
-            overallStatus = "DEGRADED";
+            overallStatus =
+                "DEGRADED";
         }
 
-        if (
-            failed.length >= 3
-        ) {
-            overallStatus = "CRITICAL";
+        if (failed.length >= 3) {
+            overallStatus =
+                "CRITICAL";
         }
 
         const duration =
             Date.now() - startedAt;
 
         console.log(
-            `🩺 System health audit completed | ` +
+            `System health audit completed | ` +
             `User: ${userId} | ` +
             `Status: ${overallStatus} | ` +
             `Duration: ${duration}ms`
@@ -397,19 +440,29 @@ toolRouter.registerTool(SYSTEM_HEALTH_TOOL, {
             success: true,
             overallStatus,
             durationMs: duration,
+
             summary: {
-                totalChecks: checks.length,
-                passed: checks.filter(
-                    check => check.status === "PASS"
-                ).length,
-                failed: failed.length,
-                notVerified: notVerified.length
+                totalChecks:
+                    checks.length,
+
+                passed:
+                    checks.filter(
+                        check =>
+                            check.status === "PASS"
+                    ).length,
+
+                failed:
+                    failed.length,
+
+                notVerified:
+                    notVerified.length
             },
+
             checks
         };
     }
 });
 
 console.log(
-    "🩺 System Health tool registered."
+    "System Health tool registered."
 );

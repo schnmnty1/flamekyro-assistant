@@ -12,84 +12,145 @@ module.exports = {
 
     async execute(message) {
 
-        console.log(
-            `📩 Message event received | User: ${message.author?.tag} | Channel: ${message.channel?.id}`
-        );
-
         // Ignore bots
         if (message.author.bot) {
+
             console.log("⏭️ Ignoring bot message.");
+
             return;
         }
 
-        // Check AI channel
-        if (message.channel.id !== process.env.AI_CHANNEL_ID) {
-            console.log(
-                `⏭️ Wrong channel. Received: ${message.channel.id} | Expected: ${process.env.AI_CHANNEL_ID}`
-            );
+
+        // Only work inside AI Channel
+        if (
+            message.channel.id !==
+            process.env.AI_CHANNEL_ID
+        ) {
+
             return;
         }
+
 
         // Ignore empty messages
-        if (!message.content?.trim()) {
-            console.log("⏭️ Empty message ignored.");
+        if (!message.content.trim()) {
+
             return;
         }
 
-        console.log(`💬 User message: ${message.content}`);
 
         try {
 
-            // Update Discord user profile
-            console.log("👤 Updating user profile...");
+            // ========================================
+            // UPDATE DISCORD USER PROFILE
+            // ========================================
 
-            await upsertUser(message.author);
+            console.log(
+                "👤 Updating user profile..."
+            );
 
-            console.log("✅ User profile updated.");
+            await upsertUser(
+                message.author
+            );
 
-            // Verify Flame's owner identity
-            console.log("👑 Checking owner identity...");
+            console.log(
+                "✅ User profile updated."
+            );
 
-            const isOwner = await ensureOwnerIdentity(message.author);
 
-            console.log(`🔐 Owner verification result: ${isOwner}`);
+            // ========================================
+            // VERIFY OWNER IDENTITY
+            // ========================================
 
-            // Show typing indicator
-            console.log("⌨️ Sending typing indicator...");
+            console.log(
+                "👑 Checking owner identity..."
+            );
+
+            const isOwner =
+                await ensureOwnerIdentity(
+                    message.author
+                );
+
+            console.log(
+                `🔐 Owner verification result: ${isOwner}`
+            );
+
+
+            // ========================================
+            // TYPING INDICATOR
+            // ========================================
+
+            console.log(
+                "⌨️ Sending typing indicator..."
+            );
 
             await message.channel.sendTyping();
 
-            // Ask AI
-            console.log("🤖 Sending message to AI...");
 
-            const reply = await askAI(
-                message.author.id,
-                message.content
+            // ========================================
+            // ASK AI
+            // IMPORTANT:
+            // Pass full Discord context to Tool Engine
+            // ========================================
+
+            console.log(
+                "🤖 Sending message to AI..."
             );
 
-            console.log("✅ AI response received.");
+            const reply =
+                await askAI(
+                    message.author.id,
+                    message.content,
+                    {
+                        member: message.member,
+                        guild: message.guild,
+                        channel: message.channel
+                    }
+                );
 
-            // Reply
-            console.log("💬 Sending Discord reply...");
+
+            // ========================================
+            // REPLY
+            // ========================================
+
+            console.log(
+                "✅ AI response received."
+            );
+
+            console.log(
+                "💬 Sending Discord reply..."
+            );
 
             await message.reply(reply);
 
-            console.log("✅ Discord reply sent successfully.");
+            console.log(
+                "✅ Discord reply sent successfully."
+            );
+
 
         } catch (error) {
 
-            console.error("❌ MESSAGE HANDLER ERROR:", error);
+            console.error(
+                "❌ Message handler error:",
+                error
+            );
+
 
             try {
+
                 await message.reply(
                     "❌ Sorry bro, kuch technical issue aa gaya. Thodi der baad try karna."
                 );
+
             } catch (replyError) {
+
                 console.error(
                     "❌ Failed to send error reply:",
                     replyError
                 );
+
             }
+
         }
+
     }
 };

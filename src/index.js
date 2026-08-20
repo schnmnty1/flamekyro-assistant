@@ -49,6 +49,7 @@ const toolRouter =
 require("./tools/testTool");
 require("./tools/serverInfoTool");
 require("./tools/userInfoTool");
+require("./tools/systemHealthTool");
 
 
 console.log(
